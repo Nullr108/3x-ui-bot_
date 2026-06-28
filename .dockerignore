@@ -1,0 +1,14 @@
+.git
+.gitignore
+venv/
+.venv/
+__pycache__/
+*.pyc
+.env
+*.db
+*.db-journal
+receipts/
+BOT_PLAN.md
+README.md
+DEPLOY.md
+3X-UI_API_CHEATSHEET.md

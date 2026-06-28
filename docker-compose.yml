@@ -1,0 +1,18 @@
+services:
+  bot:
+    build: .
+    container_name: 3xui-bot
+    restart: unless-stopped          # авто-перезапуск после падения и после ребута сервера
+    env_file: .env                   # креды/настройки берутся из .env рядом с этим файлом
+    environment:
+      - DB_PATH=/data/bot.db         # БД храним в volume, чтобы переживала пересборку
+    volumes:
+      - botdata:/data
+    logging:                         # чтобы логи не росли бесконечно
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  botdata:
