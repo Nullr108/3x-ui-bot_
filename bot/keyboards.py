@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from aiogram.types import (
+    CopyTextButton,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     WebAppInfo,
@@ -49,13 +50,34 @@ def kb_start() -> InlineKeyboardMarkup:
     )
 
 
-def kb_after_key() -> InlineKeyboardMarkup:
-    """Кнопки под выданным ключом: магазины приложений + помощь."""
+def _btn_copy_key(sub_link: str) -> InlineKeyboardButton:
+    """Кнопка, кладущая ключ-ссылку в буфер обмена по тапу (Bot API 8.0).
+
+    Нужна прежде всего для iPhone, где выделить <code>-строку пальцем неудобно;
+    на ПК/Android тоже работает в один тап."""
+    return InlineKeyboardButton(
+        text="📋 Скопировать ключ", copy_text=CopyTextButton(text=sub_link)
+    )
+
+
+def kb_after_key(sub_link: str) -> InlineKeyboardMarkup:
+    """Кнопки под выданным ключом: копирование ключа + магазины приложений + помощь."""
     return InlineKeyboardMarkup(
         inline_keyboard=[
+            [_btn_copy_key(sub_link)],
             [InlineKeyboardButton(text="🤖 Приложения для Android", callback_data=CB_APPS_ANDROID)],
             [InlineKeyboardButton(text="🍏 Приложения для iPhone (iOS)", callback_data=CB_APPS_IOS)],
             [InlineKeyboardButton(text="❓ Как подключиться — по шагам", callback_data=CB_HOWTO)],
+        ]
+    )
+
+
+def kb_copy_and_pay(sub_link: str) -> InlineKeyboardMarkup:
+    """Для напоминания «протестируй ключ»: скопировать ключ + перейти к оплате."""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [_btn_copy_key(sub_link)],
+            [InlineKeyboardButton(text="💳 Оплатить", callback_data=CB_PAY)],
         ]
     )
 

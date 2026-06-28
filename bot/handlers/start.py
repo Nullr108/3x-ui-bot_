@@ -22,7 +22,7 @@ async def cmd_start(message: Message, db: Database, config: Config) -> None:
     if user and user.sub_id and user.state in {"trial_active", "promo_active", "paid", "friends"}:
         await message.answer(
             texts.KEY_ALREADY.format(sub_link=config.sub_link(user.sub_id)),
-            reply_markup=kb_after_key(),
+            reply_markup=kb_after_key(config.sub_link(user.sub_id)),
         )
         return
 

@@ -20,7 +20,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from .config import Config
 from .db import Database, User
 from . import texts
-from .keyboards import kb_pay
+from .keyboards import kb_copy_and_pay, kb_pay
 from .xui import XUI, ClientStatus
 
 log = logging.getLogger(__name__)
@@ -233,7 +233,7 @@ class Scheduler:
                     sub_link=self.cfg.sub_link(user.sub_id or ""),
                     price=self.cfg.price_rub,
                 ),
-                reply_markup=kb_pay(),
+                reply_markup=kb_copy_and_pay(self.cfg.sub_link(user.sub_id or "")),
             )
 
     async def _notify_1day_before(self, tg_id: int) -> None:

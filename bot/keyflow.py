@@ -56,7 +56,7 @@ async def issue_key(
         await bot.send_message(
             chat_id,
             texts.KEY_ALREADY.format(sub_link=config.sub_link(user.sub_id)),
-            reply_markup=kb_after_key(),
+            reply_markup=kb_after_key(config.sub_link(user.sub_id)),
         )
         return True
 
@@ -95,7 +95,7 @@ async def issue_key(
     await bot.send_message(
         chat_id,
         texts.KEY_ISSUED.format(sub_link=config.sub_link(sub_id)),
-        reply_markup=kb_after_key(),
+        reply_markup=kb_after_key(config.sub_link(sub_id)),
     )
     if schedule_funnel:
         scheduler.schedule_trial_flow(tg.id)
