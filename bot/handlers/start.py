@@ -15,6 +15,7 @@ router = Router(name="start")
 
 @router.message(CommandStart())
 async def cmd_start(message: Message, db: Database, config: Config) -> None:
+    await db.ensure_user(message.from_user.id, message.from_user.username)
     user = await db.get_user(message.from_user.id)
 
     # Уже есть активный ключ → показываем ссылку + приложения.

@@ -44,6 +44,7 @@ async def _start_payment_flow(callback: CallbackQuery, db: Database, config: Con
 async def on_pay(callback: CallbackQuery, db: Database, config: Config) -> None:
     await callback.answer()
     tg = callback.from_user
+    await db.ensure_user(tg.id, tg.username)
     user = await db.get_user(tg.id)
 
     username_ok = bool(tg.username) and not is_temp_email(

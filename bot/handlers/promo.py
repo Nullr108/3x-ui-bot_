@@ -31,6 +31,8 @@ async def _ask_code(callback: CallbackQuery, db: Database) -> None:
 async def on_promo(callback: CallbackQuery, db: Database) -> None:
     await callback.answer()
     tg = callback.from_user
+    # Гарантируем строку в БД, иначе флаг awaiting_promo не сохранится (UPDATE no-op).
+    await db.ensure_user(tg.id, tg.username)
 
     # Промокод требует username (ключ создаётся сразу как @username).
     if not tg.username:
@@ -46,6 +48,7 @@ async def on_promo(callback: CallbackQuery, db: Database) -> None:
 async def on_promo_username_done(callback: CallbackQuery, db: Database) -> None:
     await callback.answer()
     tg = callback.from_user
+    await db.ensure_user(tg.id, tg.username)
     if not tg.username:
         await callback.message.answer(
             texts.USERNAME_STILL_EMPTY, reply_markup=kb_promo_username_done()

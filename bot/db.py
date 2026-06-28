@@ -96,6 +96,20 @@ class Database:
         row = await cur.fetchone()
         return User(**dict(row)) if row else None
 
+    async def ensure_user(self, tg_id: int, tg_username: str | None = None) -> None:
+        """Гарантирует наличие строки пользователя (иначе set_fields/UPDATE — no-op).
+
+        Создаёт минимальную запись, если её нет, и освежает username."""
+        await self.conn.execute(
+            "INSERT OR IGNORE INTO users (tg_id, tg_username, state) VALUES (?, ?, 'new')",
+            (tg_id, tg_username),
+        )
+        if tg_username is not None:
+            await self.conn.execute(
+                "UPDATE users SET tg_username = ? WHERE tg_id = ?", (tg_username, tg_id)
+            )
+        await self.conn.commit()
+
     async def all_users(self) -> list[User]:
         cur = await self.conn.execute("SELECT * FROM users")
         return [User(**dict(r)) for r in await cur.fetchall()]
