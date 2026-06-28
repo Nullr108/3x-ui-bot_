@@ -48,11 +48,12 @@ async def cmd_sync(message: Message, scheduler: Scheduler, config: Config) -> No
     if not config.is_admin(message.from_user.id):
         await message.answer(texts.NOT_ADMIN)
         return
-    checked, reset = await scheduler.sync_clients()
+    checked, reset, retimed = await scheduler.sync_clients()
     await message.answer(
         f"🔄 Синхронизация с панелью завершена.\n"
         f"Проверено активных: <b>{checked}</b>\n"
-        f"Сброшено (удалены из панели): <b>{reset}</b>"
+        f"Сброшено (удалены из панели): <b>{reset}</b>\n"
+        f"Перенесено уведомлений (правка срока): <b>{retimed}</b>"
     )
 
 

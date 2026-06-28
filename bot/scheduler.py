@@ -18,10 +18,10 @@ from aiogram import Bot
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from .config import Config
-from .db import Database
+from .db import Database, User
 from . import texts
 from .keyboards import kb_pay
-from .xui import XUI
+from .xui import XUI, ClientStatus
 
 log = logging.getLogger(__name__)
 
@@ -119,13 +119,17 @@ class Scheduler:
         )
         log.info("client sync scheduled every %d min", self.cfg.sync_interval_minutes)
 
-    async def sync_clients(self) -> tuple[int, int]:
-        """Если клиент пропал из панели — сбрасываем юзера в боте (pipeline заново).
+    async def sync_clients(self) -> tuple[int, int, int]:
+        """Сверяем БД бота с панелью.
 
-        Возвращает (проверено, сброшено). На сетевых/сессионных ошибках юзера
-        НЕ трогаем (сброс только при подтверждённом отсутствии клиента)."""
+        - клиент пропал из панели → сбрасываем юзера (pipeline заново);
+        - срок клиента изменён вручную в панели → обновляем БД и переносим
+          уже запланированное уведомление под новую дату.
+
+        Возвращает (проверено, сброшено, перепланировано). На сетевых/сессионных
+        ошибках юзера НЕ трогаем (действуем только при подтверждённом ответе панели)."""
         users = await self.db.all_users()
-        checked = reset = 0
+        checked = reset = retimed = 0
         for u in users:
             if not u.client_email or u.state not in {"trial_active", "promo_active", "paid", "friends"}:
                 continue
@@ -142,8 +146,48 @@ class Scheduler:
                 log.info(
                     "sync: %s gone from panel → reset user %s", u.client_email, u.tg_id
                 )
-        log.info("sync done: checked=%d, reset=%d", checked, reset)
-        return checked, reset
+                continue
+            # клиент на месте — подтянуть срок и перенести уведомление при ручной правке
+            if await self._resync_expiry(u, status):
+                retimed += 1
+        log.info("sync done: checked=%d, reset=%d, retimed=%d", checked, reset, retimed)
+        return checked, reset, retimed
+
+    async def _resync_expiry(self, user: User, status: ClientStatus) -> bool:
+        """Если срок в панели отличается от БД — обновить БД и перенести уже
+        запланированное уведомление об окончании под новую дату.
+
+        Переносим ТОЛЬКО уже существующую джобу (не создаём раньше времени):
+        для paid это paid1d, для trial/promo — remind3h (check4h привязан к моменту
+        выдачи, а не к сроку, поэтому его не трогаем). friends — без воронки.
+        Возвращает True, если что-то перенесли."""
+        panel_expiry = status.expiry_time  # unix-мс, 0 = бессрочно
+        if user.state == "paid":
+            db_field, old = "paid_until_ms", (user.paid_until_ms or 0)
+            job_id = _job_paid(user.tg_id)
+            reschedule = lambda: self.schedule_paid_notify(user.tg_id, panel_expiry)
+        elif user.state in {"trial_active", "promo_active"}:
+            db_field, old = "trial_expiry_ms", (user.trial_expiry_ms or 0)
+            job_id = _job_remind(user.tg_id)
+            reschedule = lambda: self._schedule_remind_3h(user.tg_id, panel_expiry)
+        else:
+            return False  # friends — без уведомлений
+
+        if panel_expiry == old:
+            return False
+
+        await self.db.set_fields(user.tg_id, **{db_field: panel_expiry})
+
+        had_job = self.sched.get_job(job_id) is not None
+        if had_job:
+            self._cancel(job_id)
+            if panel_expiry:  # 0 = бессрочно → уведомлять не о чем
+                reschedule()
+        log.info(
+            "sync: %s expiry %d→%d in panel (retimed=%s)",
+            user.client_email, old, panel_expiry, had_job,
+        )
+        return had_job
 
     # ── джобы ────────────────────────────────────────────
     async def _check_trial_4h(self, tg_id: int) -> None:
