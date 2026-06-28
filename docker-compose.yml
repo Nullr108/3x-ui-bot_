@@ -1,6 +1,8 @@
 services:
   bot:
     build: .
+    image: 3xui-bot:latest          # явное имя образа: иначе compose берёт его от имени
+                                     # папки (3x-ui-bot_) и получает невалидное "3x-ui-bot_-bot"
     container_name: 3xui-bot
     restart: unless-stopped          # авто-перезапуск после падения и после ребута сервера
     # Панель 3x-ui слушает на 127.0.0.1:2049 ХОСТА. В bridge-сети контейнера
